@@ -1,0 +1,105 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: inventory-service
+  datasource:
+    url: jdbc:mariadb://localhost:3306/inventory_db?createDatabaseIfNotExist=true
+    username: root
+    password: root
+    driver-class-name: org.mariadb.jdbc.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/schema.sql
+      data-locations: classpath:db/data.sql
+      continue-on-error: false
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MariaDBDialect
+  webflux:
+    client:
+      connect-timeout: 5000
+      read-timeout: 5000
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://your-auth0-domain.auth0.com/
+          jwk-set-uri: https://your-auth0-domain.auth0.com/.well-known/jwks.json
+          audience: your-api-audience-identifier
+  aop:
+    proxy-target-class: true
+  main:
+    banner-mode: off
+    log-startup-info: true
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true
+
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventory:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        slidingWindowType: COUNT_BASED
+        permittedNumberOfCallsInHalfOpenState: 3
+        minimumNumberOfCalls: 5
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  bulkhead:
+    instances:
+      inventory:
+        maxConcurrentCalls: 15
+        maxWaitDuration: 500ms
+  retry:
+    instances:
+      inventory:
+        maxAttempts: 3
+        waitDuration: 1s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.web.client.HttpServerErrorException
+  timelimiter:
+    instances:
+      inventory:
+        timeoutDuration: 3s
+        cancelRunningFuture: true
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method 

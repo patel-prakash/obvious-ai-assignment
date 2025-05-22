@@ -1,0 +1,31 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(customer, "Customer", "Uses the e-commerce platform")
+
+System_Boundary(c1, "E-commerce Microservices System") {
+    Container(api_gateway, "API Gateway", "Spring Cloud Gateway", "Routes requests and handles authentication")
+    Container(service_registry, "Service Registry", "Netflix Eureka", "Service discovery")
+
+    Container(inventory_service, "Inventory Service", "Spring Boot, JPA", "Manages product inventory")
+    database "inventory_db"
+
+    Container(payment_service, "Payment Service", "Spring Boot, JPA", "Processes payments")
+    database "payment_db"
+    Container(message_broker, "Message Broker", "Kafka", "Handles async events")
+}
+
+Rel(customer, api_gateway, "Uses", "HTTPS")
+Rel(api_gateway, service_registry, "Discovers services from", "HTTP")
+Rel(api_gateway, inventory_service, "Routes to", "HTTP")
+Rel(api_gateway, payment_service, "Routes to", "HTTP")
+
+Rel(inventory_service, service_registry, "Registers with", "HTTP")
+Rel(inventory_service, inventory_db, "Reads/Writes", "JDBC")
+
+Rel(payment_service, service_registry, "Registers with", "HTTP")
+Rel(payment_service, payment_db, "Reads/Writes", "JDBC")
+Rel(payment_service, inventory_service, "Validates stock", "HTTP/WebClient")
+Rel(payment_service, message_broker, "Publishes payment events", "Kafka")
+
+@enduml

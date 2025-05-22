@@ -1,0 +1,74 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: inventory-service
+          uri: lb://inventory-service
+          predicates:
+            - Path=/api/inventory/**
+          filters:
+            - RewritePath=/api/inventory/(?<segment>.*), /api/${segment}
+        
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/payment/**
+          filters:
+            - RewritePath=/api/payment/(?<segment>.*), /api/${segment}
+  security:
+    # Security filter chain configuration
+    filter:
+      order: -100
+    # Disable CSRF for API Gateway
+    csrf:
+      disable: true
+    # OAuth2 resource server configuration
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AUTH_ISSUER_URI:https://dev-example.us.auth0.com/}
+          jwk-set-uri: ${AUTH_JWK_URI:https://dev-example.us.auth0.com/.well-known/jwks.json}
+          audience: ${AUTH_AUDIENCE:api-gateway}
+    # Authorization configuration
+    authorization:
+      rules:
+        # Public endpoints that don't require authentication
+        - patterns: /actuator/**
+          access: permitAll
+        # All other endpoints require authentication
+        - patterns: /**
+          access: authenticated
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    reactor.netty: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO 

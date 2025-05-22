@@ -1,0 +1,31 @@
+@startuml
+actor Client
+participant "API Gateway" as Gateway
+participant "Payment Service" as Payment
+participant "Inventory Service" as Inventory
+database "Payment DB" as PaymentDB
+database "Inventory DB" as InventoryDB
+queue "Kafka" as Kafka
+
+Client -> Gateway: POST /api/payment
+Gateway -> Payment: Process payment request
+Payment -> Inventory: Validate and lock stock
+Inventory -> InventoryDB: Check product availability
+InventoryDB --> Inventory: Return stock status
+Inventory --> Payment: Stock validation response
+
+alt Stock available
+    Payment -> Inventory: Lock stock
+    Inventory -> InventoryDB: Update stock status
+    Inventory --> Payment: Stock locked
+
+    Payment -> PaymentDB: Save payment (SUCCESS)
+    Payment -> Kafka: Publish payment success event
+    Payment --> Gateway: Return success response
+else Stock not available
+    Payment -> PaymentDB: Save payment (FAILED)
+    Payment --> Gateway: Return failure response
+end
+
+Gateway --> Client: Payment response
+@enduml
